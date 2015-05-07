@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+{% block content %}
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" type="text/javascript"></script>
+<head>
+  <meta name="viewport" content="initial-scale=1.0, user-scalable=no"/>
+  <script type="text/javascript" src="http://maps.google.com/maps/api/js?sensor=true"></script>
+  <script type="text/javascript" src="http://mbostock.github.com/d3/d3.js?1.29.1"></script>
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" type="text/javascript"></script>
+
+  <style type="text/css">
+
+  html, body, #map {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .stations, .stations svg {
+    position: absolute;
+  }
+
+  .stations svg {
+    width: 60px;
+    height: 20px;
+    padding-right: 100px;
+    font: 10px sans-serif;
+  }
+
+  .stations circle {
+    fill: brown;
+    stroke: brown;
+    stroke-width: 1.5px;
+  }
+
+  </style>
+</head>
+
+<script type="text/javascript">
+nodes = []
+
+counter = 0
+
+$(document).ready(function(){
+  console.log("{{query}}")
+  $.ajax({
+    url:"http://ws.audioscrobbler.com/2.0/?method=artist.getevents&artist="+"{{query}}"+"&api_key=b5712a5d3cabe3a63b2cb666cc14d61a&format=json",
+    // url:"http://api.jambase.com/artists?name="+"{{query}}"+"api_key=fgbe6dymfeykwmvuv894hzat",
+    dataType: "json",
+    success: callback
+  })
+  
+})
+
+// function callback1(data){
+//   console.log(data.Artists)
+//   query = data.Artists[0].id
+//   $.ajax({
+//     url:"http://api.jambase.com/events?artistId="+query+"&page=0&api_key=fgbe6dymfeykwmvuv894hzat",
+//     dataType: "json",
+//     success: callback
+//   })
+// }
+
+$("#nextButton").click(function(){
+  // alert(counter)
+  console.log(counter)
+  counter++
+  var map = new google.maps.Map(document.getElementById("map"), {
+    zoom: 10,
+    center: new google.maps.LatLng(nodes[counter][2], nodes[counter][1]),
+    mapTypeId: google.maps.MapTypeId.TERRAIN
+  });
+  draw(map)
+})
+$("#prevButton").click(function(){
+  // alert(counter)
+  console.log(counter)
+  counter--
+  var map = new google.maps.Map(document.getElementById("map"), {
+    zoom: 10,
+    center: new google.maps.LatLng(nodes[counter][2], nodes[counter][1]),
+    mapTypeId: google.maps.MapTypeId.TERRAIN
+  });
+  draw(map)
+})
+function draw(map){
+  var overlay = new google.maps.OverlayView();
+
+  // Add the container when the overlay is added to the map.
+  overlay.onAdd = function() {
+    var layer = d3.select((this.getPanes().overlayLayer)).append("div")
+    .attr("class", "stations");
+
+    overlay.draw = function() {
+      var projection = this.getProjection(),
+      padding = 10;
+
+      var marker = layer.selectAll("svg")
+      .data(d3.entries(nodes))
+          .each(transform) // update existing markers
+          .enter().append("svg:svg")
+          .each(transform)
+          .attr("class", "marker")
+
+      // Add a circle.
+      marker.append("svg:circle")
+      .attr("id", $(this).index())
+      .attr("r", 7.5)
+      .attr("cx", padding)
+      .attr("cy", padding);
+
+      // Add a label.
+      marker.append("svg:text")
+      .attr("x", padding + 7)
+      .attr("y", padding)
+      .attr("dy", ".31em")
+      .text(function(d) {
+            return d.value[0]; });
+
+      function transform(d) {
+        d = new google.maps.LatLng(d.value[2], d.value[1]);
+        d = projection.fromLatLngToDivPixel(d);
+        return d3.select(this)
+            .style("left", (d.x - padding) + "px")
+            .style("top", (d.y - padding) + "px");
+          }
+
+          function click(){
+            alert("click")
+            console.log(counter)
+            counter++
+            overlay.setMap(map);
+          }
+
+        };
+      };
+
+      overlay.setMap(map);
+
+      if(counter==nodes.length-1){
+        counter=0
+      }
+      getInfo(nodes[counter])
+}
+
+
+
+function callback(data){
+  getNews()
+  console.log(data)
+  if(data.events.total==0){
+    noti()
+    return
+  }
+  var events = data.events.event
+  console.log(events)
+  events.forEach(function(e){
+    node = [e.title,
+    +e.venue.location["geo:point"]["geo:long"],
+    +e.venue.location["geo:point"]["geo:lat"],
+    e.venue.location.city,
+    Date.parse(e.startDate),
+    e.description,
+    e.image[2],
+    e.artists,
+    e.startDate]
+
+  // var events = data.events
+  // events.forEach(function(e){
+  //   node = [e.Venue.Name,
+  //   +e.Venue.Longtitue,
+  //   +e.Venue.Latitude,
+  //   e.Venue.City,
+  //   Date.parse(e.Date),
+  //   e.TicketUrl,
+  //   "http://media.npr.org/images/picture-show-flickr-promo.jpg",
+  //   e.Artists,
+  //   e.Date]
+
+    if(node[1]!=0)
+      nodes.push(node)
+  })
+
+  nodes.sort(function(a,b) {
+    return a[3] - b[3];
+  })
+
+  var map = new google.maps.Map(document.getElementById("map"), {
+    zoom: 10,
+    center: new google.maps.LatLng(nodes[counter][2], nodes[counter][1]),
+    mapTypeId: google.maps.MapTypeId.TERRAIN
+  });
+
+  draw(map)
+  
+
+}
+function getInfo(node){
+  var artists = ""
+  console.log(node)
+
+  $("#Pic").html(('</br><center><img src="' + node[6]["#text"] + '" /></center>'))
+  $("#Title").empty()
+  .append('<center><h4>' + node[0]+'</h4></center>')
+  .append('<center><h4>at ' + node[3]+'</h4></center>')
+  .append('<p>' + node[7].headliner + '</p>')
+  .append("<p>" + node[8] + "</p>")
+  .append("<p>" + node[5] + "</p>")
+}
+
+function noti(){
+  $("#Title").empty()
+  .append("<center><h4>Sorry, this artist won't have any event soon</h4></center>")
+}
+
+function getNews(){
+  $.ajax({
+    url:"http://content.guardianapis.com/search?section=music&order-by=relevance&q="+"{{query}}"+"&api-key=atd8y6f2yw42h5r4tgff79c4",
+    // url:"http://api.jambase.com/artists?name="+"{{query}}"+"api_key=fgbe6dymfeykwmvuv894hzat",
+    dataType: "json",
+    success: callbackNews
+  })
+}
+
+function callbackNews(data){
+  console.log(data)
+  articles = data.response.results
+  articles.forEach(function(article){
+    $("#News").append('<div class="panel panel-default"><div class="panel-body"><h4>'+article.webTitle+'</h4><p><a href="'+article.webUrl+'">Read more at TheGuardian.com</a></p></div></div>')
+  })
+}
+</script>
+
+<div id="map"></div>
+
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+<!-- Include all compiled plugins (below), or include individual files as needed -->
+<script src="/static/bootstrap/dist/js/bootstrap.min.js"></script>
+
+{% endblock %}

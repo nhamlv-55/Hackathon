@@ -1,0 +1,134 @@
+{% extends "pakdd/home.html" %}
+{% block content %}
+<!-- {{value}} -->
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+<style type="text/css">
+
+
+  .axis text {
+   font: 10px sans-serif;
+ }
+
+ .axis path,
+ .axis line {
+   fill: none;
+   stroke: #000;
+   shape-rendering: crispEdges;
+ }
+
+.line {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 1.5px;
+}
+</style>
+<center>
+	<h4>Predicted values for module {{m}}, part {{p}}, from January 2010 to July 2011</h4>
+</center>
+<svg class="chart"></svg>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script>
+
+  var tmp = document.getElementById("divgraph").offsetWidth
+
+  var value = {{value}}
+  var old = {{old}}
+  var data = old.concat(value)
+  if(data.length==0){
+    alert("Sorry, there was no part data for this part :(")
+  }
+  console.log(old)
+  console.log(value)
+  console.log(data)
+  var margin = {top: 20, right: 30, bottom: 30, left: 40},
+  width = tmp - margin.left - margin.right,
+  height = 500 - margin.top - margin.bottom;
+
+  var x = d3.scale.ordinal()
+  .rangeRoundBands([0, width], .1);
+
+  var y = d3.scale.linear()
+  .range([height, 0]);
+
+  var xAxis = d3.svg.axis()
+  .scale(x)
+  .orient("bottom");
+
+  var yAxis = d3.svg.axis()
+  .scale(y)
+  .orient("left");
+
+  var chart = d3.select(".chart")
+  .attr("width", width + margin.left + margin.right)
+  .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+  .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+
+  x.domain(data.map(function(d, i) { return i }));
+  y.domain([0, 1.5*d3.max(data, function(d) { return d })]);
+
+  chart.append("g")
+  .attr("class", "x axis")
+  .attr("transform", "translate(0," + height + ")")
+  .call(xAxis);
+
+  chart.append("text")
+  .attr("transform", "translate(" + (width / 2) + " ," + (height + margin.bottom) + ")")
+  .style("text-anchor", "middle")
+  .text("Month Index");
+  chart.append("g")
+  .attr("class", "y axis")
+  .call(yAxis);
+
+  chart.append("text")
+  .attr("transform", "rotate(-90)")
+  .attr("y", 0 - margin.left)
+  .attr("x",0 - (height / 2))
+  .attr("dy", "1em")
+  .style("text-anchor", "middle")
+  .text("Number of repairs");
+
+  var line = d3.svg.line()
+        .x(function(d, i) { return x(i)+x.rangeBand()/2; })
+        .y(function(d) { return y(d); })
+
+  chart.append("path")
+  .data(data)
+  .attr("class", "line")
+  .attr("d", line)
+
+  var dot=chart.selectAll(".dot")
+  .data(data)
+  .enter().append("circle")
+  .attr("class", "dot")
+  .attr("cx", function(d, i) { return x(i)+x.rangeBand()/2; })
+      // .attr("y", function(d) { return y(d); })
+      .attr("cy", function(d) { return y(d); })
+      .attr("r", 0)
+      .attr("fill", function(d,i){
+        if(i>old.length-1){return "red"}
+          return "steelblue"
+      })
+
+      dot.transition()
+      .duration(function(d,i){
+        if(i>old.length-1){
+          return i*200}
+        return 0
+      }
+        )
+      .attr("r", 5)
+
+  
+
+  
+
+  function type(d) {
+    d = +d // coerce to number
+  return d;
+}
+
+</script>
+{% endblock %}

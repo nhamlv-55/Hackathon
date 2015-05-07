@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>D3: Setting path fills</title>
+  <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>
+  <style type="text/css">
+    /* No style rules here yet */       
+  </style>
+</head>
+<body>
+  <script type="text/javascript">
+
+    //Width and height
+    var w = 1000;
+    var h = 800;
+
+    //Define map projection
+    var projection = d3.geo.azimuthalEquidistant()
+    .translate([w/2, h/2])
+    .scale([500]);
+
+    //Define path generator
+    var path = d3.geo.path()
+    .projection(projection);
+
+    //Create SVG element
+    var svg = d3.select("body")
+    .append("svg")
+    .attr("width", w)
+    .attr("height", h);
+
+    //Load in GeoJSON data
+    d3.csv("/tracker_csv/full_song.csv", function(error, data) {
+      dict = {}
+      data.forEach(function(d){
+        dict[d.Country]=d;
+        // console.log(dict)
+      })
+
+      d3.json("/tracker_csv/er.json", function(json) {
+        console.log(json)
+        //Bind data and create one path per GeoJSON feature
+        svg.selectAll("path")
+        .data(json.features)
+        .enter()
+        .append("path")
+        .attr("d", path)
+        .attr("transform", "translate(0,300)")
+        .attr("fill", function(d){
+          // console.log(d.properties.name)
+          if( Object.keys(dict).indexOf(d.properties.name)>-1 ){
+            // console.log(d.properties.name, dict[d.properties.name].danceability)
+            return "rgb(0,"+Math.floor(255*dict[d.properties.name].liveness)+", 0)"
+            // return "rgb(255, 0, 0)"
+          }
+        });
+
+      });
+    })
+
+    </script>
+  </body>
+  </html>

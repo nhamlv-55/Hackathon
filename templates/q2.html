@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+.bar {
+  fill: steelblue;
+}
+
+.axis text{
+  font: 10px sans-serif;
+}
+
+.legend text{
+  font: 10px sans-serif;
+}
+
+.axis path,
+.axis line{
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.chart rect{
+  fill: purple;
+}
+</style>
+<head>
+  <title>Vis</title>
+</head>
+  <script src="http://d3js.org/d3.v3.min.js"></script>
+<body>
+  <svg class="chart1"></svg>
+  <svg class="chart2"></svg>
+  <svg class="chart3"></svg>
+
+  <script>
+
+var margin = {top: 20, right: 100, bottom: 30, left: 40},
+    width = 500 - margin.left - margin.right,
+    height = 400 - margin.top - margin.bottom;
+
+var x0 = d3.scale.ordinal()
+    .rangeRoundBands([0, width*1.5], .3);
+
+var x1 = d3.scale.ordinal();
+
+var y = d3.scale.linear()
+    .range([height, 0]);
+
+var x = d3.scale.ordinal()
+    .rangeRoundBands([0, width], .5);
+
+var yHappiness = d3.scale.linear()
+    .range([height, 0]);
+
+var yloudness = d3.scale.linear()
+    .range([height, 0]);
+
+var yAcc = d3.scale.linear()
+    .range([height, 0]);    
+
+var xAxis = d3.svg.axis()
+    .scale(x)
+    .orient("bottom");
+
+var xAxis3 = d3.svg.axis()
+    .scale(x0)
+    .orient("bottom");
+
+var yAxis = d3.svg.axis()
+    .scale(y)
+    .orient("left")
+
+var yAxisH = d3.svg.axis()
+    .scale(yHappiness)
+    .orient("left");
+
+var yAxisL = d3.svg.axis()
+    .scale(yloudness)
+    .orient("left");
+
+var yAxisA = d3.svg.axis()
+    .scale(yAcc)
+    .orient("left");
+
+var chart1 = d3.select(".chart1")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+var chart2 = d3.select(".chart2")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+var chart3 = d3.select(".chart3")
+      .attr("width", width*2 + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+var color = d3.scale.ordinal().range(['rgb(199,233,192)','rgb(161,217,155)','rgb(116,196,118)','rgb(49,163,84)','rgb(0,109,44)'])
+
+d3.csv("/tracker_csv/songs.csv", function(error, data) {
+  console.log(data)
+  x.domain(data.map(function(d) { return d.Song; }));
+  yHappiness.domain([0, d3.max(data, function(d) { return d.Happiness; })]);
+
+  chart1.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis)
+      .append("text")
+      .attr("x", width+5)
+      // .attr("y", "6")
+      .style("text-anchor", "start")
+      .style("font-weight", "bold")
+      .text("Song title")
+
+  chart1.append("g")
+      .attr("class", "y axis")
+      .call(yAxisH)
+      .append("text")
+      .attr("transform", "rotate(-90)")
+      .style("font-weight", "bold")
+      .attr("y", 10)
+      .style("text-anchor", "end")
+      .text("Happiness")
+
+  chart1.selectAll(".bar")
+      .data(data)
+    .enter().append("rect")
+      .style("class", "bar")
+      .attr("fill", "purple")
+      .attr("x", function(d) { return x(d.Song); })
+      .attr("y", function(d) {console.log(d.Happiness); return yHappiness(d.Happiness); })
+      .attr("height", function(d) { return height - yHappiness(d.Happiness); })
+      .attr("width", x.rangeBand());
+
+
+  console.log(d3.max(data, function(d) { return d.loudness; }))
+
+  yloudness.domain([0, 60-d3.max(data, function(d) { return d.loudness; })]);
+  console.log(yloudness)
+  chart2.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis)
+      .append("text")
+      .style("font-weight", "bold")
+      .attr("x", width+5)
+      .style("text-anchor", "start")
+      .text("Song title")
+
+  chart2.append("g")
+      .attr("class", "y axis")
+      .call(yAxisL)
+      .append("text")
+      .attr("transform", "rotate(-90)")
+      .style("font-weight", "bold")
+      .attr("y", 10)
+      .style("text-anchor", "end")
+      .text("Loudness (dB)")
+
+  chart2.selectAll(".bar")
+      .data(data)
+    .enter().append("rect")
+      .attr("class", "bar")
+      .attr("x", function(d) { return x(d.Song); })
+      .attr("y", function(d) { return yloudness(+d.loudness+60); })
+      .attr("height", function(d) {console.log("dda");
+        console.log(+d.loudness+60)
+       return height - yloudness(+d.loudness+60); })
+      .attr("width", x.rangeBand());
+// ----------------------------------------------
+  var Acc = ['danceability', 'energy', 'speechiness', 'liveness', 'acousticness', 'valence']
+  var Song = data.map(function(d){
+    return d.Song
+  })
+  var temp = []
+
+  Acc.map(function(attr){
+    t = {attribute: attr}
+
+    data.map(function(d){t[d.Song]=+d[attr]})
+    temp.push(t)  
+  })
+  temp.forEach(function(t){
+    t.song = Song.map(function(s){return {name:s, value:+t[s]}})
+  })
+  console.log(temp)
+  // console.log(data)
+  // x0.domain(data.map(function(d) { return d.Song; }));
+  x0.domain(Acc);
+
+  // console.log(x0.keys());
+  // x1.domain(Acc)
+  //   .rangeRoundBands([0, x0.rangeBand()]);
+  x1.domain(Song)
+    .rangeRoundBands([0, x0.rangeBand()]);
+  y.domain([0, 1]);
+
+  chart3.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis3)
+      .append("text")
+      .style("font-weight", "bold")
+      .attr("x", width*1.5+5)
+      .style("text-anchor", "start")
+      .text("Accoustic attribute")
+  chart3.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+      .append("text")
+      .attr("transform", "rotate(-90)")
+      .style("font-weight", "bold")
+      .attr("y", 10)
+      .style("text-anchor", "end")
+      .text("Value")
+
+  // var song = chart3.selectAll(".song")
+  //     .data(data)
+  //   .enter().append("g")
+  //     .attr("class", "g")
+  //     .attr("transform", function(d) { return "translate(" + x0(d.Song) + ",0)"; });
+
+  var attr = chart3.selectAll(".attr")
+      .data(temp)
+    .enter().append("g")
+      .attr("class", "g")
+      .attr("transform", function(t) { return "translate(" + x0(t.attribute) + ",0)"; });
+
+  // song.selectAll("rect")
+  //     .data(function(d) { return d.acc; })
+  //   .enter().append("rect")
+  //     .attr("width", x1.rangeBand())
+  //     .attr("x", function(d) { return x1(d.name); })
+  //     .attr("y", function(d) { return y(d.value); })
+  //     .attr("height", function(d) { return height - y(d.value); })
+  //     .style("fill", function(d) { return color(d.name); });
+
+  attr.selectAll("rect")
+      .data(function(t){return t.song})
+    .enter().append("rect")
+      .attr("width", x1.rangeBand())
+      .attr("x", function(t) { return x1(t.name); })
+      .attr("y", function(t) { return y(t.value); })
+      .attr("height", function(t) { return height - y(t.value); })
+      .style("fill", function(t) { return color(t.name); });
+
+
+  var legend = chart3.selectAll(".legend")
+      .data(Song)
+    .enter().append("g")
+      .attr("class", "legend")
+      .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+
+  legend.append("rect")
+      .attr("x", width*1.5+10)
+      .attr("width", 18)
+      .attr("height", 18)
+      .style("fill", color);
+
+  legend.append("text")
+      .attr("x", width*1.5 + 36)
+      .attr("y", 9)
+      .attr("dy", ".35em")
+      .style("text-anchor", "start")
+      .text(function(d) { return d; });
+})
+
+  // ---------------------------------------------
+  
+
+
+
+
+</script>

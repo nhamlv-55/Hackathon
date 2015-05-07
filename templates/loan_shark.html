@@ -1,0 +1,229 @@
+{% extends "base_loan_shark.html" %}
+{% block content %}
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="initial-scale=1.0, user-scalable=no"/>
+  <script type="text/javascript" src="http://maps.google.com/maps/api/js?sensor=true"></script>
+  <script src="http://d3js.org/d3.v3.min.js"></script>
+
+  <style type="text/css">
+
+  html, body, #map {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .stations, .stations svg {
+    position: absolute;
+  }
+
+  .stations svg {
+    width: 60px;
+    height: 20px;
+    padding-right: 100px;
+    font: 10px sans-serif;
+  }
+
+  /*.stations circle {*/
+    /*fill: brown;*/
+    /*stroke: brown;*/
+    /*stroke-width: 1.5px;*/
+  /*}*/
+
+  </style>
+</head>
+
+<script type="text/javascript">
+var nodes = []
+var links =[]
+var radius = 5;
+function draw(map){
+  var overlay = new google.maps.OverlayView();
+
+  // Add the container when the overlay is added to the map.
+  overlay.onAdd = function() {
+    var layer = d3.select((this.getPanes().overlayMouseTarget)).append("div")
+    .attr("class", "stations");
+
+    overlay.draw = function() {
+      var max = d3.max(nodes,function(d) {    //Returns 480
+                        return d["balance"];  //References first value in each sub-array
+                  })
+      var min = d3.min(nodes,function(d) {    //Returns 480
+                        return d["balance"];  //References first value in each sub-array
+                  })
+      var color = d3.scale.linear()
+          .domain([10000, 100000])
+          .range(['#ffeda0', '#800026'])
+          .interpolate(d3.interpolateLab);
+
+      var projection = this.getProjection(),
+      padding = 10;
+
+      var node_coord = {}
+
+      var marker = layer.selectAll("svg")
+      .data(nodes)
+      .each(transform) // update existing markers
+      .enter().append("svg:svg")
+      .each(transform)
+      .attr("class", "marker")
+      .on("mouseenter", draw_connection)
+      .on("mouseleave", function(d){
+        var markerLink = layer.selectAll(".links").remove()
+      })
+      // Add a circle.
+      marker.append("svg:circle")
+      .attr("id", $(this).index())
+      .attr("r", radius)
+      .attr("cx", padding)
+      .attr("cy", padding)
+      .attr("fill", function(d){
+        if(d["balance"] <10000)
+          return "#ffeda0"
+        else
+          if(d["balance"]>100000)
+            return "#800026"
+        // console.log(d)
+        return color(d["balance"])
+      }
+      )
+      function draw_connection(d){
+        console.log(d)
+        var transactions = []
+        links.forEach(function(edge){
+          if(edge.source==d._id)
+            transactions.push(edge)
+          if(edge.target==d._id)
+            transactions.push(edge)
+          // console.log(transactions)
+        })
+        // console.log(transactions)
+        var markerLink = layer.selectAll(".links")
+        .data(transactions)
+          .each(pathTransform) // update existing markers       
+          .enter().append("svg:svg")
+          .attr("class", "links")
+          .each(pathTransform);
+
+        function pathTransform(d) {
+          // console.log(node_coord)
+          var t, b, l, r, w, h, currentSvg;
+          $(this).empty(); // get rid of the old lines (cannot use d3 .remove() 
+          dsrc = new google.maps.LatLng(node_coord[d.source + "," + 1], node_coord[d.source + "," + 0]);
+          dtrg = new google.maps.LatLng(node_coord[d.target + "," + 1], node_coord[d.target + "," + 0]);
+          d1 = projection.fromLatLngToDivPixel(dsrc);
+          d2 = projection.fromLatLngToDivPixel(dtrg);
+          if ( d1.y < d2.y ) {
+            t = d1.y;
+            b = d2.y;
+          } else {
+            t = d2.y;
+            b = d1.y;
+          }
+          if ( d1.x < d2.x ) {
+            l = d1.x;
+            r = d2.x;
+          } else {
+            l = d2.x;
+            r = d1.x; 
+          }
+          currentSvg = d3.select(this)
+
+          .style("left", (l + radius) + "px")
+          .style("top", (t + radius) + "px")
+          .style("width", (r - l - radius) + "px")
+          .style("height", (b - t - radius) + "px");
+          // drawing the diagonal lines inside the svg elements. We could use 2 cases instead of for but maybe you will need to orient your graph (so you can use some arrows)
+          // console.log(d1.y, d2.y, d1.x, d2.x)
+          if (( d1.y <= d2.y) && ( d1.x <= d2.x)) {
+            currentSvg.append("svg:line")
+            .style("stroke-width", 1)
+            .style("stroke", "black")
+            .attr("y1", 0)
+            .attr("x1", 0)
+            .attr("x2", r-l)
+            .attr("y2", b-t);
+          } else if ((d1.x >= d2.x) && (d1.y >= d2.y)){
+            currentSvg.append("svg:line")
+            .style("stroke-width", 1)
+            .style("stroke", "black")
+            .attr("y1", 0)
+            .attr("x1", 0)
+            .attr("x2", r-l)
+            .attr("y2", b-t);
+          } else if (( d1.y <= d2.y) && ( d1.x >= d2.x)){
+            currentSvg.append("svg:line")
+            .style("stroke-width", 1)
+            .style("stroke", "black")
+            .attr("y1", 0)
+            .attr("x2", 0)
+            .attr("x1", r-l)
+            .attr("y2", b-t);
+          } else if ((d1.x <= d2.x) && (d1.y >= d2.y)){
+            currentSvg.append("svg:line")
+            .style("stroke-width", 1)
+            .style("stroke", "black")
+            .attr("y1", 0)
+            .attr("x2", 0)
+            .attr("x1", r-l)
+            .attr("y2", b-t);
+          } else {
+            console.log("something is wrong!!!");
+          }
+          return currentSvg;
+        }
+      }
+        function transform(d) {
+          node_coord[d._id + "," +0] = d.long;
+          node_coord[d._id + "," +1] = d.lat;
+          d = new google.maps.LatLng(d.lat, d.long);
+
+          d = projection.fromLatLngToDivPixel(d);
+          return d3.select(this)
+          .style("left", (d.x - padding) + "px")
+          .style("top", (d.y - padding) + "px");
+        }
+        
+  };
+} 
+overlay.setMap(map);
+
+}
+
+d3.json("/tracker_csv/full_customer_record.json", function(error, json){
+  console.log(json)
+  nodes = json
+  var map = new google.maps.Map(document.getElementById("map"), {
+    zoom: 6,
+    center: new google.maps.LatLng(nodes[0].lat, nodes[0].long),
+    mapTypeId: google.maps.MapTypeId.TERRAIN
+  });
+  d3.csv("/tracker_csv/trans_graph2.csv", function(error, blah){
+// console.log(blah)
+    links = blah
+// links.forEach()
+    draw(map)
+})
+  // draw(map)
+
+}
+)
+
+
+      </script>
+
+      <div id="map"></div>
+
+
+      <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+      <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+      <!-- Include all compiled plugins (below), or include individual files as needed -->
+      <script src="/static/bootstrap/dist/js/bootstrap.min.js"></script>
+
+      {% endblock %}
